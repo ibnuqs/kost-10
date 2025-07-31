@@ -8,9 +8,9 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => env('APP_ENV') === 'production' ? [
-        env('APP_URL', 'https://your-domain.com'),
-        'https://your-domain.com',
-        'https://www.your-domain.com',
+        env('APP_URL', 'https://potunakos.my.id'),
+        'https://potunakos.my.id',
+        'https://www.potunakos.my.id',
     ] : [
         'http://localhost:3000',
         'http://127.0.0.1:3000',

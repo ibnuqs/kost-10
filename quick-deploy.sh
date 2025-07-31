@@ -43,8 +43,13 @@ apt install nginx -y
 print_status "Installing MySQL..."
 apt install mysql-server -y
 
-print_status "Installing PHP 8.2 and extensions..."
-apt install php8.2 php8.2-fpm php8.2-mysql php8.2-xml php8.2-curl php8.2-zip php8.2-mbstring -y
+print_status "Adding PHP repository and installing PHP..."
+# Add PHP repository for Ubuntu 22.04
+add-apt-repository ppa:ondrej/php -y
+apt update
+
+# Install PHP 8.2 and extensions
+apt install php8.2 php8.2-fpm php8.2-mysql php8.2-xml php8.2-curl php8.2-zip php8.2-mbstring php8.2-cli -y
 
 print_status "Installing Composer..."
 curl -sS https://getcomposer.org/installer | php
