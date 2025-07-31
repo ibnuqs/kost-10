@@ -16,9 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // ✅ FIXED: Hanya CORS untuk token-based auth
+        // ✅ FIXED: Custom CORS middleware untuk production
         $middleware->api(prepend: [
-            \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\CustomCors::class,
         ]);
 
         // Register custom middleware
