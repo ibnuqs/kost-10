@@ -1,15 +1,13 @@
 import React from 'react';
-import { MapPin, Eye } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 interface HeroSectionProps {
   onBookingClick: () => void;
-  onVirtualTourClick: () => void;
   className?: string;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   onBookingClick,
-  onVirtualTourClick,
   className = ''
 }) => {
   return (
@@ -44,14 +42,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               className="w-full sm:w-auto bg-orange-400 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-500 transition-colors duration-200 shadow-sm"
             >
               Booking Sekarang
-            </button>
-            
-            <button 
-              onClick={onVirtualTourClick}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 border-2 border-teal-400 text-teal-600 px-8 py-3 rounded-lg font-semibold hover:bg-teal-400/10 backdrop-blur-sm transition-all duration-200"
-            >
-              <Eye size={18} />
-              Virtual Tour
             </button>
           </div>
         </div>

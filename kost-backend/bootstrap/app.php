@@ -100,6 +100,20 @@ return Application::configure(basePath: dirname(__DIR__))
             ->appendOutputTo(storage_path('logs/expired-payments-notifications.log'))
             ->description('Check expired payments and send notifications every 4 hours');
 
+        // Send payment reminders daily at 9 AM
+        $schedule->command('payments:send-reminders')
+            ->dailyAt('09:00')
+            ->withoutOverlapping(30)
+            ->runInBackground()
+            ->onFailure(function () {
+                \Illuminate\Support\Facades\Log::error('Payment reminders failed');
+            })
+            ->onSuccess(function () {
+                \Illuminate\Support\Facades\Log::info('Payment reminders sent successfully');
+            })
+            ->appendOutputTo(storage_path('logs/payment-reminders.log'))
+            ->description('Send payment reminders to tenants daily at 9 AM');
+
         // Daily cleanup of very old expired payments
         $schedule->command('payments:cleanup-old-expired --days=90 --force')
             ->dailyAt('02:00')

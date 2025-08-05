@@ -677,7 +677,6 @@ Route::middleware(['auth:sanctum'])->post('/tenant-door-open', function () {
 
         // Get tenant record - same as debug logic
         $tenant = \App\Models\Tenant::where('user_id', $user->id)
-            ->where('status', \App\Models\Tenant::STATUS_ACTIVE)
             ->with('room')
             ->first();
 
@@ -705,6 +704,25 @@ Route::middleware(['auth:sanctum'])->post('/tenant-door-open', function () {
                 'success' => false,
                 'message' => "Door controller sedang offline (status: {$device->status})",
             ], 503);
+        }
+
+        // Validasi Status Tenant dan Pembayaran Tertunggak
+        if ($tenant->status !== \App\Models\Tenant::STATUS_ACTIVE) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Status Anda tidak aktif ('. $tenant->status .')',
+            ], 403);
+        }
+
+        $overduePayments = \App\Models\Payment::where('tenant_id', $tenant->id)
+            ->where('status', 'overdue')
+            ->count();
+
+        if ($overduePayments > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Anda memiliki pembayaran yang tertunggak.',
+            ], 403);
         }
 
         $reason = request()->input('reason', 'Kontrol manual tenant');

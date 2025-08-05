@@ -12,3 +12,4 @@ export { ManualOverrideModal } from './ManualOverrideModal';
 // StuckPaymentDetector removed during cleanup
 export { VoidPaymentModal } from './VoidPaymentModal';
 export { ExpiredPaymentModal } from './ExpiredPaymentModal';
+export { InfoHelpModal } from './InfoHelpModal';

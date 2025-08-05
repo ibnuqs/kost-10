@@ -1,11 +1,9 @@
-// src/pages/Landing/pages/LandingPage.tsx - FIXED
 import React from 'react';
 import { LandingLayout } from '../components';
 // Fix: Import modals directly from modals directory
 import { 
   BookingModal,
   GalleryModal,
-  VirtualTourModal,
   ContactModal
 } from '../components/modals';
 import {
@@ -48,11 +46,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
   };
 
-  const handleVirtualTourClick = () => {
-    openModal('virtualTour');
-    analyticsService.trackVirtualTour();
-  };
-
   const handleViewRoomDetails = (roomType: RoomType) => {
     openModal('gallery', { 
       images: roomType.images,
@@ -88,10 +81,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           handleBookingClick();
           analyticsService.trackButtonClick('hero_booking', 'hero');
         }}
-        onVirtualTourClick={() => {
-          handleVirtualTourClick();
-          analyticsService.trackButtonClick('hero_virtual_tour', 'hero');
-        }}
       />
 
       {/* Features Section */}
@@ -109,7 +98,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         }}
         onContactClick={() => {
           handleContactClick();
-          analyticsService.trackButtonClick('pricing_contact', 'pricing');
+          analyticsService.trackButtonClick('pricing_contact', 'cta');
         }}
       />
 
@@ -150,13 +139,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         images={galleryImages}
         startIndex={galleryStartIndex}
         category={galleryCategory}
-      />
-
-      <VirtualTourModal
-        isOpen={modals.virtualTour}
-        onClose={() => closeModal('virtualTour')}
-        tourUrl=""
-        roomType={selectedRoomType || undefined}
       />
 
       <ContactModal

@@ -50,6 +50,7 @@ class MqttListener extends Command
                         }
 
                         // Process RFID scan with real database
+                        $this->info("🔍 Processing UID: {$data['uid']} from device: {$data['device_id']}");
                         $processResult = $this->processRfidScanWithDatabase($data);
 
                         // Send response back to ESP32
@@ -264,7 +265,47 @@ class MqttListener extends Command
                 ];
             }
 
-            // STEP 6: SUCCESS - All validations passed
+            // STEP 6: Check for overdue payments only (allow pending)
+            $overduePayments = \App\Models\Payment::where('tenant_id', $card->tenant->id)
+                ->where('status', 'overdue')
+                ->get();
+
+            // Console debug output
+            $this->info("💰 PAYMENT CHECK for {$user->name} (Tenant {$card->tenant->id}):");
+            $this->info("   Overdue payments found: " . $overduePayments->count());
+            foreach ($overduePayments as $payment) {
+                $this->info("   - Payment {$payment->id}: {$payment->status} ({$payment->payment_month})");
+            }
+
+            \Illuminate\Support\Facades\Log::info('RFID Payment Check', [
+                'card_uid' => $scannedUid,
+                'tenant_id' => $card->tenant->id,
+                'user_name' => $user->name,
+                'overdue_count' => $overduePayments->count(),
+                'overdue_payments' => $overduePayments->pluck('id', 'status')->toArray(),
+            ]);
+
+            if ($overduePayments->count() > 0) {
+                // Log access denied due to unpaid payments
+                \App\Models\AccessLog::create([
+                    'user_id' => $user->id,
+                    'room_id' => $iotDevice->room_id,
+                    'rfid_uid' => $scannedUid,
+                    'device_id' => $scannedDeviceId,
+                    'access_granted' => false,
+                    'reason' => 'Access denied: overdue payments',
+                    'accessed_at' => now('Asia/Jakarta'),
+                ]);
+
+                return [
+                    'status' => 'denied',
+                    'user' => $user->name,
+                    'message' => 'Access denied: You have overdue payments',
+                    'access_granted' => false,
+                ];
+            }
+
+            // STEP 7: SUCCESS - All validations passed
             $response = [
                 'status' => 'granted',
                 'user' => $user->name,

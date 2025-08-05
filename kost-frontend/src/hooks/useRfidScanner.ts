@@ -82,6 +82,41 @@ export const useRfidScanner = (scanTimeoutMs: number = 30000) => {
     }
   }, []); // Remove dependency to prevent re-creation
 
+  // Stop scanning
+  const stopScanning = useCallback(() => {
+    console.log('🛑 RFID Scanner: Stopping scan mode...');
+    
+    // Check if already stopped
+    if (!isScanningRef.current) {
+      console.log('⚠️ RFID Scanner: Already stopped, skipping...');
+      return;
+    }
+    
+    // Update ref first
+    isScanningRef.current = false;
+    
+    // Clear timeout
+    if (scanTimeoutRef.current) {
+      clearTimeout(scanTimeoutRef.current);
+      scanTimeoutRef.current = null;
+    }
+
+    // Unsubscribe from topic
+    mqttService.unsubscribe('rfid/tags', handleScanMessage);
+
+    // Clear callback
+    onCardScannedRef.current = null;
+
+    // Update state
+    setState(prev => ({
+      ...prev,
+      isScanning: false,
+      timeoutId: null
+    }));
+
+    console.log('✅ RFID Scanner: Scan mode stopped');
+  }, [handleScanMessage]); // Remove dependency to prevent re-creation
+
   // Start scanning for RFID cards
   const startScanning = useCallback((onCardScanned?: (card: ScannedCard) => void) => {
     console.log('🔍 RFID Scanner: Starting scan mode...');
@@ -138,41 +173,6 @@ export const useRfidScanner = (scanTimeoutMs: number = 30000) => {
     console.log(`✅ RFID Scanner: Scan mode active (timeout: ${scanTimeoutMs}ms)`);
     return true;
   }, [scanTimeoutMs, handleScanMessage, state.isScanning, state.error, stopScanning]); // Remove handleScanMessage dependency
-
-  // Stop scanning
-  const stopScanning = useCallback(() => {
-    console.log('🛑 RFID Scanner: Stopping scan mode...');
-    
-    // Check if already stopped
-    if (!isScanningRef.current) {
-      console.log('⚠️ RFID Scanner: Already stopped, skipping...');
-      return;
-    }
-    
-    // Update ref first
-    isScanningRef.current = false;
-    
-    // Clear timeout
-    if (scanTimeoutRef.current) {
-      clearTimeout(scanTimeoutRef.current);
-      scanTimeoutRef.current = null;
-    }
-
-    // Unsubscribe from topic
-    mqttService.unsubscribe('rfid/tags', handleScanMessage);
-
-    // Clear callback
-    onCardScannedRef.current = null;
-
-    // Update state
-    setState(prev => ({
-      ...prev,
-      isScanning: false,
-      timeoutId: null
-    }));
-
-    console.log('✅ RFID Scanner: Scan mode stopped');
-  }, [handleScanMessage]); // Remove dependency to prevent re-creation
 
   // Clear scanned card data
   const clearScannedCard = useCallback(() => {

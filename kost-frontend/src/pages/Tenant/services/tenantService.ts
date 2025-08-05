@@ -445,7 +445,7 @@ class TenantService {
       // Use the new working endpoint that follows the same pattern as debug-tenant-access
       console.log('🔍 Trying new working door control endpoint...');
       
-      const response = await api.post<ApiResponse<DoorControlResponse>>('/tenant-door-open', {
+      const response = await api.post<ApiResponse<DoorControlResponse>>(endpoints.tenant.door.open, {
         reason: reason || 'Tenant manual door open'
       });
       
@@ -557,13 +557,16 @@ class TenantService {
       };
       
       const status = axiosError.response.status;
-      let message = statusMessages[status];
+      const backendMessage = axiosError.response.data?.message;
       
-      if (status === 422 && axiosError.response.data?.message) {
-        message = `Validation failed: ${axiosError.response.data.message}`;
+      let displayMessage = backendMessage || statusMessages[axiosError.response.status] || axiosError.message || 'Network error occurred';
+      
+      // Special handling for 422 if a specific message prefix is desired
+      if (axiosError.response.status === 422 && backendMessage) {
+        displayMessage = `Validation failed: ${backendMessage}`;
       }
       
-      throw new Error(message || axiosError.message || 'Network error occurred');
+      throw new Error(displayMessage);
     }
     
     // Handle generic error

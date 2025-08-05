@@ -45,7 +45,7 @@ export const ExpiredPaymentModal: React.FC<ExpiredPaymentModalProps> = ({
     try {
       setRegenerating(prev => new Set([...prev, paymentId]));
       
-      const response = await api.post(endpoints.admin.payments.forceRegenerate(paymentId));
+      const response = await api.post(endpoints.admin.payments.regenerate(paymentId));
       
       if (response.data.success) {
         // Remove from expired list

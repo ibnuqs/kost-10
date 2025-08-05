@@ -277,7 +277,7 @@ export const endpoints = {
       analytics: '/admin/payments/analytics',
       export: '/admin/payments/export',
       expired: '/admin/payments/expired',
-      forceRegenerate: (id: number | string) => `/admin/payments/${id}/force-regenerate`,
+      regenerate: (id: number | string) => `/admin/payments/${id}/regenerate`,
       checkExpired: '/admin/payments/check-expired',
       cleanupExpired: '/admin/payments/cleanup-expired',
       expirationReport: '/admin/payments/expiration-report',

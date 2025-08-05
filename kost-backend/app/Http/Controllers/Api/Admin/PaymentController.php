@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +175,7 @@ class PaymentController extends Controller
             DB::beginTransaction();
 
             $generatedPayments = [];
+            $notificationsSent = 0;
             foreach ($activeTenants as $tenant) {
                 $payment = Payment::create([
                     'order_id' => $this->generateOrderId(),
@@ -183,6 +185,16 @@ class PaymentController extends Controller
                     'status' => Payment::STATUS_PENDING,
                 ]);
 
+                // Create notification for the tenant
+                \App\Models\Notification::create([
+                    'user_id' => $tenant->user_id,
+                    'title' => 'Tagihan Bulanan Dibuat',
+                    'message' => 'Tagihan sewa untuk bulan '.date('F Y', strtotime($paymentMonth.'-01')).' telah dibuat sebesar Rp '.number_format($tenant->monthly_rent, 0, ',', '.'),
+                    'type' => 'payment',
+                    'data' => json_encode(['payment_id' => $payment->id, 'order_id' => $payment->order_id]),
+                ]);
+
+                $notificationsSent++;
                 $generatedPayments[] = $payment;
             }
 
@@ -191,6 +203,7 @@ class PaymentController extends Controller
             Log::info('Monthly payments generated successfully', [
                 'payment_month' => $paymentMonth,
                 'payments_count' => count($generatedPayments),
+                'notifications_sent' => $notificationsSent,
                 'generated_by' => Auth::id(),
             ]);
 
@@ -199,6 +212,7 @@ class PaymentController extends Controller
                 'data' => [
                     'payment_month' => $paymentMonth,
                     'payments_generated' => count($generatedPayments),
+                    'notifications_sent' => $notificationsSent,
                     'total_amount' => array_sum(array_column($generatedPayments, 'amount')),
                 ],
                 'message' => 'Monthly payments generated successfully',
@@ -396,19 +410,24 @@ class PaymentController extends Controller
     public function stats(Request $request)
     {
         try {
-            $month = $request->get('month', now()->format('Y-m'));
+            $month = $request->get('month', ''); // Default to empty string for all months
+
+            $query = Payment::query();
+            if (! empty($month)) {
+                $query->where('payment_month', $month);
+            }
 
             $stats = [
                 'current_month' => [
-                    'month' => $month,
-                    'total_payments' => Payment::where('payment_month', $month)->count(),
-                    'paid_payments' => Payment::where('payment_month', $month)->where('status', Payment::STATUS_PAID)->count(),
-                    'pending_payments' => Payment::where('payment_month', $month)->where('status', Payment::STATUS_PENDING)->count(),
-                    'overdue_payments' => Payment::where('payment_month', $month)->where('status', Payment::STATUS_OVERDUE)->count(),
-                    'total_amount' => (float) Payment::where('payment_month', $month)->sum('amount'),
-                    'paid_amount' => (float) Payment::where('payment_month', $month)->where('status', Payment::STATUS_PAID)->sum('amount'),
-                    'pending_amount' => (float) Payment::where('payment_month', $month)->where('status', Payment::STATUS_PENDING)->sum('amount'),
-                    'overdue_amount' => (float) Payment::where('payment_month', $month)->where('status', Payment::STATUS_OVERDUE)->sum('amount'),
+                    'month' => empty($month) ? 'all' : $month,
+                    'total_payments' => (clone $query)->count(),
+                    'paid_payments' => (clone $query)->where('status', Payment::STATUS_PAID)->count(),
+                    'pending_payments' => (clone $query)->where('status', Payment::STATUS_PENDING)->count(),
+                    'overdue_payments' => (clone $query)->where('status', Payment::STATUS_OVERDUE)->count(),
+                    'total_amount' => (float) (clone $query)->sum('amount'),
+                    'paid_amount' => (float) (clone $query)->where('status', Payment::STATUS_PAID)->sum('amount'),
+                    'pending_amount' => (float) (clone $query)->where('status', Payment::STATUS_PENDING)->sum('amount'),
+                    'overdue_amount' => (float) (clone $query)->where('status', Payment::STATUS_OVERDUE)->sum('amount'),
                 ],
                 'overall' => [
                     'total_payments' => Payment::count(),
@@ -959,7 +978,7 @@ class PaymentController extends Controller
                     'user_id' => $tenant->user_id,
                     'title' => 'Tagihan Baru',
                     'message' => 'Tagihan pembayaran sewa untuk bulan '.date('F Y', strtotime($request->payment_month.'-01')).' telah dibuat. Jumlah: Rp '.number_format($amount, 0, ',', '.'),
-                    'type' => 'payment_generated',
+                    'type' => 'payment',
                     'data' => json_encode([
                         'payment_id' => $payment->id,
                         'order_id' => $orderId,
@@ -1043,6 +1062,7 @@ class PaymentController extends Controller
                 'amount' => $payment->amount,
                 'status' => Payment::STATUS_PENDING,
                 'notes' => 'Regenerated from expired payment #'.$payment->id,
+                'regenerated_from' => $payment->id, // <-- This line is added
             ]);
 
             DB::commit();

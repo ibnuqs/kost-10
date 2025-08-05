@@ -130,7 +130,7 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
           {/* Quick Actions */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               
               {/* Generate Bills */}
               <button
@@ -141,8 +141,8 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
                   <Calendar className="w-5 h-5 text-blue-600" />
                   <ArrowRight className="w-4 h-4 text-blue-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                 </div>
-                <h4 className="font-medium text-blue-900 mb-1">Generate Tagihan</h4>
-                <p className="text-sm text-blue-700">Buat tagihan bulanan</p>
+                <h4 className="font-medium text-blue-900 mb-1">Buat Tagihan Bulanan</h4>
+                <p className="text-sm text-blue-700">Jalankan untuk semua penyewa aktif.</p>
               </button>
 
               {/* Generate Individual */}
@@ -154,11 +154,11 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
                   <UserPlus className="w-5 h-5 text-green-600" />
                   <ArrowRight className="w-4 h-4 text-green-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
                 </div>
-                <h4 className="font-medium text-green-900 mb-1">Generate Individual</h4>
-                <p className="text-sm text-green-700">Buat tagihan per penyewa</p>
+                <h4 className="font-medium text-green-900 mb-1">Buat Tagihan Manual</h4>
+                <p className="text-sm text-green-700">Buat tagihan untuk satu penyewa.</p>
               </button>
 
-              {/* Handle Overdue */}
+              {/* Handle Overdue & Expired */}
               <button
                 onClick={() => onQuickAction('overdue')}
                 className={`group p-4 border rounded-lg transition-all duration-200 text-left ${
@@ -174,10 +174,10 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
                   }`} />
                 </div>
                 <h4 className={`font-medium mb-1 ${(stats?.overdue_count || 0) > 0 ? 'text-red-900' : 'text-gray-900'}`}>
-                  Tunggakan ({stats?.overdue_count || 0})
+                  Tagihan Terlambat ({stats?.overdue_count || 0})
                 </h4>
                 <p className={`text-sm ${(stats?.overdue_count || 0) > 0 ? 'text-red-700' : 'text-gray-700'}`}>
-                  Kelola pembayaran terlambat
+                  Kelola tunggakan & tagihan kedaluwarsa.
                 </p>
               </button>
 
@@ -197,24 +197,11 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
                   }`} />
                 </div>
                 <h4 className={`font-medium mb-1 ${(stats?.pending_this_month || 0) > 0 ? 'text-yellow-900' : 'text-gray-900'}`}>
-                  Pending ({stats?.pending_this_month || 0})
+                  Pembayaran Tertunda ({stats?.pending_this_month || 0})
                 </h4>
                 <p className={`text-sm ${(stats?.pending_this_month || 0) > 0 ? 'text-yellow-700' : 'text-gray-700'}`}>
-                  Cek pembayaran menunggu
+                  Lihat semua pembayaran yang menunggu.
                 </p>
-              </button>
-
-              {/* Sync All */}
-              <button
-                onClick={() => onQuickAction('sync')}
-                className="group p-4 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-all duration-200 text-left"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
-                  <ArrowRight className="w-4 h-4 text-purple-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
-                </div>
-                <h4 className="font-medium text-purple-900 mb-1">Sinkronisasi</h4>
-                <p className="text-sm text-purple-700">Update status payment</p>
               </button>
 
               {/* Export Report */}
@@ -227,20 +214,7 @@ export const PaymentDashboard: React.FC<PaymentDashboardProps> = ({
                   <ArrowRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
                 </div>
                 <h4 className="font-medium text-indigo-900 mb-1">Ekspor Laporan</h4>
-                <p className="text-sm text-indigo-700">Download Excel/PDF</p>
-              </button>
-
-              {/* Expired Payments */}
-              <button
-                onClick={() => onQuickAction('expired')}
-                className="group p-4 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-all duration-200 text-left"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <XCircle className="w-5 h-5 text-orange-600" />
-                  <ArrowRight className="w-4 h-4 text-orange-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
-                </div>
-                <h4 className="font-medium text-orange-900 mb-1">Payment Expired</h4>
-                <p className="text-sm text-orange-700">Kelola payment kadaluwarsa</p>
+                <p className="text-sm text-indigo-700">Unduh data pembayaran (CSV).</p>
               </button>
               
             </div>

@@ -139,9 +139,9 @@ export const usePayments = () => {
     manualOverrideStatus,
     exportPayments,
     bulkSyncPayments,
-    refresh: () => {
-      loadPayments();
-      loadStats();
+    refresh: (currentFilters?: PaymentFilters) => {
+      loadPayments(currentFilters || filters);
+      loadStats(currentFilters || filters);
     }
   };
 };

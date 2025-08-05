@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\Payment;
+use App\Models\Notification;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Midtrans\Config;
-use Midtrans\Notification;
 use Midtrans\Snap;
 use Midtrans\Transaction;
 
@@ -65,7 +65,7 @@ class MidtransService
 
             // ✅ FIXED: Ensure proper data types and clean values
             $orderId = (string) $payment->order_id;
-            $amount = (int) round($payment->amount); // Ensure integer, no decimals
+            $amount = (int) round((float) $payment->amount); // Ensure integer, no decimals
             $tenantName = (string) ($payment->tenant->user->name ?? $payment->tenant->name ?? 'Unknown');
             $tenantEmail = (string) ($payment->tenant->user->email ?? $payment->tenant->email ?? 'noemail@example.com');
             $tenantPhone = (string) ($payment->tenant->user->phone ?? $payment->tenant->phone ?? '');
@@ -95,9 +95,9 @@ class MidtransService
                 ],
                 // ✅ FIXED: Dynamic callback URLs (ngrok-ready)
                 'callbacks' => [
-                    'finish' => env('FRONTEND_URL', 'http://localhost:5173').'/tenant/payments?status=success&order_id='.$orderId,
-                    'unfinish' => env('FRONTEND_URL', 'http://localhost:5173').'/tenant/payments?status=pending&order_id='.$orderId,
-                    'error' => env('FRONTEND_URL', 'http://localhost:5173').'/tenant/payments?status=failed&order_id='.$orderId,
+                    'finish' => env('FRONTEND_URL', 'http://localhost:3000').'/tenant/payments?status=success&order_id='.$orderId,
+                    'unfinish' => env('FRONTEND_URL', 'http://localhost:3000').'/tenant/payments?status=pending&order_id='.$orderId,
+                    'error' => env('FRONTEND_URL', 'http://localhost:3000').'/tenant/payments?status=failed&order_id='.$orderId,
                 ],
                 // ✅ NEW: Webhook notification URL for real-time updates
                 'custom_field1' => env('WEBHOOK_URL', env('NGROK_URL', 'http://localhost:8000').'/api/webhook/midtrans'),
@@ -321,6 +321,11 @@ class MidtransService
 
             $status = Transaction::status($orderId);
 
+            // Ensure $status is an object, even if Midtrans returns an array
+            if (is_array($status)) {
+                $status = (object) $status;
+            }
+
             // Log detailed response
             Log::info('✅ Midtrans status response received', [
                 'order_id' => $orderId,
@@ -348,20 +353,9 @@ class MidtransService
                 'environment' => Config::$isProduction ? 'production' : 'sandbox',
             ]);
 
-            // Log additional error details if available
-            if (method_exists($e, 'getResponse')) {
-                Log::error('Midtrans API response details', [
-                    'order_id' => $orderId,
-                    'response_body' => $e->getResponse(),
-                ]);
-            }
+            
 
-            if (method_exists($e, 'getHttpStatusCode')) {
-                Log::error('Midtrans HTTP error details', [
-                    'order_id' => $orderId,
-                    'http_status' => $e->getHttpStatusCode(),
-                ]);
-            }
+            
 
             return [
                 'success' => false,
@@ -407,17 +401,31 @@ class MidtransService
     private function sendPaymentSuccessNotification(Payment $payment): void
     {
         try {
-            // You can implement notification logic here
-            // For example: send email, push notification, etc.
+            if (! $payment->tenant || ! $payment->tenant->user) {
+                Log::warning('Cannot send payment success notification: Tenant or user data missing.', [
+                    'payment_id' => $payment->id,
+                ]);
 
-            Log::info('Payment success notification should be sent', [
-                'payment_id' => $payment->id,
-                'tenant_id' => $payment->tenant_id,
-                'amount' => $payment->amount,
+                return;
+            }
+
+            \App\Models\Notification::create([
+                'user_id' => $payment->tenant->user_id,
+                'title' => 'Pembayaran Berhasil',
+                'message' => 'Pembayaran Anda sebesar Rp '.number_format((float) $payment->amount, 0, ',', '.').' untuk tagihan bulan '.date('F Y', strtotime($payment->payment_month.'-01')).' telah berhasil.',
+                'type' => 'payment',
+                'data' => json_encode([
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'amount' => $payment->amount,
+                ]),
             ]);
 
-            // Example: Broadcast event for real-time notification
-            // broadcast(new PaymentSuccessEvent($payment));
+            Log::info('Payment success notification created', [
+                'payment_id' => $payment->id,
+                'tenant_id' => $payment->tenant_id,
+                'user_id' => $payment->tenant->user_id,
+            ]);
 
         } catch (Exception $e) {
             Log::error('Failed to send payment success notification', [

@@ -25,8 +25,9 @@ export const useTenantDoorControl = () => {
     },
     onError: (error: unknown) => {
       console.error('Error opening door:', error);
-      const message = error instanceof Error ? error.message : 'Gagal membuka pintu';
-      toast.error(message);
+      // Pesan error akan ditangani oleh interceptor global di api.ts
+      // const message = error instanceof Error ? error.message : 'Gagal membuka pintu';
+      // toast.error(message);
     },
   });
 

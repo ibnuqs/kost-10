@@ -323,6 +323,7 @@ export const SmartAccessManagement: React.FC = () => {
     const roomsPromise = roomService.getRooms()
       .then(roomsData => {
         const roomsArray = Array.isArray(roomsData) ? roomsData : (roomsData?.rooms || []);
+        console.log('[DEBUG] Rooms data from API:', roomsArray); // <-- DEBUG
         setRooms(roomsArray);
         setRoomsLoading(false);
         return roomsArray;
@@ -505,9 +506,7 @@ export const SmartAccessManagement: React.FC = () => {
             }
           };
           
-          // Publish to multiple topics to ensure WorkingAnalytics receives it
-          mqttService.publish('rfid/access_log', JSON.stringify(logMessage));
-          mqttService.publish('rfid/tags', JSON.stringify(logMessage));
+          // Publish to a dedicated topic for manual control logs
           mqttService.publish('rfid/manual_control', JSON.stringify(logMessage));
           
           // Force refresh WorkingAnalytics by triggering a window event

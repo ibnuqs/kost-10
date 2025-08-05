@@ -1,6 +1,6 @@
 // File: src/pages/Admin/pages/PaymentManagement.tsx
 import React, { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, HelpCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { usePayments } from '../hooks';
 import api, { endpoints } from '../../../utils/api';
@@ -15,7 +15,8 @@ import {
   ManualOverrideModal,
   VoidPaymentModal,
   // StuckPaymentDetector removed during cleanup
-  ExpiredPaymentModal
+  ExpiredPaymentModal,
+  InfoHelpModal
 } from '../components/feature/payments';
 import { Card, DangerousActionModal } from '../components/ui';
 import type { AdminPayment as Payment, PaymentFilters as PaymentFiltersType } from '../types';
@@ -40,7 +41,8 @@ const PaymentManagement: React.FC = () => {
   const [filters, setFilters] = useState<PaymentFiltersType>({
     search: '',
     status: '',
-    month: ''
+    month: '',
+    generation_type: ''
   });
   
   const [showAdvancedGenerate, setShowAdvancedGenerate] = useState(false);
@@ -51,6 +53,7 @@ const PaymentManagement: React.FC = () => {
   const [showManualOverride, setShowManualOverride] = useState(false);
   const [showVoidPayment, setShowVoidPayment] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [showInfoHelp, setShowInfoHelp] = useState(false);
   const [showDangerousAction, setShowDangerousAction] = useState<{
     type: 'generate' | 'sync' | null;
     data?: unknown;
@@ -153,6 +156,8 @@ const PaymentManagement: React.FC = () => {
     payment_month: string;
     prorate_from_date?: string;
     send_notification: boolean;
+    description?: string;
+    notes?: string;
   }) => {
     try {
       setIndividualGenerating(true);
@@ -234,7 +239,14 @@ const PaymentManagement: React.FC = () => {
               </p>
             </div>
             
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+            <div className="mt-4 flex space-x-3 md:mt-0 md:ml-4">
+              <button
+                onClick={() => setShowInfoHelp(true)}
+                className="inline-flex items-center px-4 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm font-medium shadow-sm transition-colors"
+              >
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Info & Help
+              </button>
               <button
                 onClick={refresh}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors"
@@ -262,10 +274,7 @@ const PaymentManagement: React.FC = () => {
           />
         </div>
 
-        {/* Stuck Payment Detection - Temporarily Disabled */}
-        <div className="mb-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-700 text-sm">Stuck payment detector temporarily unavailable</p>
-        </div>
+        
 
 
         {/* Payment Table Section */}
@@ -341,6 +350,11 @@ const PaymentManagement: React.FC = () => {
         isOpen={showExpiredModal}
         onClose={() => setShowExpiredModal(false)}
         onRefresh={refresh}
+      />
+
+      <InfoHelpModal
+        isOpen={showInfoHelp}
+        onClose={() => setShowInfoHelp(false)}
       />
 
       <DangerousActionModal

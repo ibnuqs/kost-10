@@ -20,8 +20,16 @@ export const paymentService = {
     return response.data.data || response.data;
   },
 
-  async getStats(): Promise<PaymentStats> {
-    const response = await api.get('/admin/payments/stats');
+  async getStats(filters?: PaymentFilters): Promise<PaymentStats> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '' && value !== 'all') {
+          params.append(key, value.toString());
+        }
+      });
+    }
+    const response = await api.get(`/admin/payments/stats?${params}`);
     if (response.data.success === false) {
       throw new Error(response.data.message || 'Failed to fetch payment stats');
     }

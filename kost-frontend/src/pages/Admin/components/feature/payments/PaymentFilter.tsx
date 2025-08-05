@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Filter, Calendar } from 'lucide-react';
+import { Search, Filter, Calendar, Bot } from 'lucide-react';
 import { PaymentFilters as PaymentFiltersType } from '../../../types';
 
 export const PaymentFilters: React.FC<{
@@ -10,11 +10,12 @@ export const PaymentFilters: React.FC<{
     onFilterChange({
       search: '',
       status: '',
-      month: ''
+      month: '',
+      generation_type: ''
     });
   };
 
-  const hasActiveFilters = filters.search || filters.status || filters.month;
+  const hasActiveFilters = filters.search || filters.status || filters.month || filters.generation_type;
 
   return (
     <div className="p-6 border-b border-gray-200 bg-gray-50">
@@ -58,6 +59,20 @@ export const PaymentFilters: React.FC<{
               onChange={(e) => onFilterChange({ ...filters, month: e.target.value })}
               className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[140px]"
             />
+          </div>
+
+          {/* Generation Type Filter */}
+          <div className="relative">
+            <Bot className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <select
+              value={filters.generation_type || ''}
+              onChange={(e) => onFilterChange({ ...filters, generation_type: e.target.value })}
+              className="pl-10 pr-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[140px]"
+            >
+              <option value="">Semua Jenis</option>
+              <option value="auto">Otomatis</option>
+              <option value="manual">Manual</option>
+            </select>
           </div>
 
           {/* Clear Filters */}
@@ -108,6 +123,17 @@ export const PaymentFilters: React.FC<{
               <button
                 onClick={() => onFilterChange({ ...filters, month: '' })}
                 className="ml-2 text-purple-600 hover:text-purple-800"
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {filters.generation_type && (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+              Jenis: {filters.generation_type === 'manual' ? 'Manual' : 'Otomatis'}
+              <button
+                onClick={() => onFilterChange({ ...filters, generation_type: '' })}
+                className="ml-2 text-orange-600 hover:text-orange-800"
               >
                 ×
               </button>

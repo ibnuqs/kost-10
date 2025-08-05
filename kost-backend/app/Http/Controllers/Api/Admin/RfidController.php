@@ -579,6 +579,10 @@ class RfidController extends Controller
                     $message = 'Akses ditolak: Kartu tidak aktif.';
                 } elseif (! $rfidCard->user_id) {
                     $message = 'Akses ditolak: Kartu belum ditugaskan ke pengguna.';
+                } elseif ($rfidCard->tenant && $rfidCard->tenant->status !== 'active') {
+                    $message = 'Akses ditolak: Status tenant tidak aktif (' . $rfidCard->tenant->status . ').';
+                } elseif ($this->hasPendingOverduePayments($rfidCard)) {
+                    $message = 'Akses ditolak: Terdapat pembayaran yang telat.';
                 } else {
                     $device = IoTDevice::where('device_id', $deviceId)->first();
 
@@ -1497,6 +1501,54 @@ class RfidController extends Controller
 
             return $this->getErrorResponse($e, 'Gagal mengupdate device_id kartu RFID');
         }
+    }
+
+    /**
+     * Check if RFID card user has pending or overdue payments
+     */
+    private function hasPendingOverduePayments($rfidCard): bool
+    {
+        if (!$rfidCard || !$rfidCard->user_id) {
+            return false;
+        }
+
+        // First try direct tenant relationship from RFID card
+        if ($rfidCard->tenant_id) {
+            $overduePayments = \App\Models\Payment::where('tenant_id', $rfidCard->tenant_id)
+                ->where('status', 'overdue')
+                ->exists();
+
+            if ($overduePayments) {
+                \Illuminate\Support\Facades\Log::info('RFID Access Denied - Direct tenant has overdue payments', [
+                    'rfid_uid' => $rfidCard->uid,
+                    'user_id' => $rfidCard->user_id,
+                    'tenant_id' => $rfidCard->tenant_id,
+                ]);
+                return true;
+            }
+        }
+
+        // Fallback: check via user relationship to find active tenant
+        $activeTenant = \App\Models\Tenant::where('user_id', $rfidCard->user_id)
+            ->where('status', 'active')
+            ->first();
+
+        if ($activeTenant) {
+            $overduePayments = \App\Models\Payment::where('tenant_id', $activeTenant->id)
+                ->where('status', 'overdue')
+                ->exists();
+
+            if ($overduePayments) {
+                \Illuminate\Support\Facades\Log::info('RFID Access Denied - User tenant has overdue payments', [
+                    'rfid_uid' => $rfidCard->uid,
+                    'user_id' => $rfidCard->user_id,
+                    'tenant_id' => $activeTenant->id,
+                ]);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

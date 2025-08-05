@@ -26,6 +26,9 @@ import TenantLayout from './pages/Tenant/Layout';
 // [PERBAIKAN]: Import semua halaman tenant, termasuk AccessHistory.
 import Dashboard from './pages/Tenant/pages/Dashboard';
 import PaymentHistory from './pages/Tenant/pages/PaymentHistory';
+import PaymentSuccessPage from './pages/Tenant/components/feature/payments/PaymentSuccessPage';
+import PaymentPendingPage from './pages/Tenant/components/feature/payments/PaymentPendingPage';
+import PaymentErrorPage from './pages/Tenant/components/feature/payments/PaymentErrorPage';
 import AccessHistory from './pages/Tenant/pages/AccessHistory'; // Ditambahkan
 import Notifications from './pages/Tenant/pages/Notifications';
 import Profile from './pages/Tenant/pages/Profile';
@@ -195,6 +198,9 @@ function App() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="payments" element={<PaymentHistory />} />
+              <Route path="payments/success" element={<PaymentSuccessPage />} />
+              <Route path="payments/pending" element={<PaymentPendingPage />} />
+              <Route path="payments/failed" element={<PaymentErrorPage />} />
               {/* [PERBAIKAN]: Menambahkan rute untuk halaman AccessHistory */}
               <Route path="access-history" element={<AccessHistory />} />
               <Route path="notifications" element={<Notifications />} />

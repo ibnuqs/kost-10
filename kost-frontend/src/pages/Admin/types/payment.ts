@@ -55,16 +55,28 @@ export interface Payment extends BaseEntity {
   tenant_id: number;
   payment_month: string;
   amount: string;
-  status: 'pending' | 'paid' | 'failed' | 'overdue' | 'expired' | 'cancelled' | 'void';
+  status: 'pending' | 'paid' | 'overdue' | 'expired' | 'cancelled';
+  generation_type: 'auto' | 'manual';
+  generated_by_user_id?: number;
+  description?: string;
+  regenerated_from?: number;
   payment_method?: string;
-  paid_at?: string;
-  failed_at?: string;
-  failure_reason?: string;
   snap_token?: string;
-  transaction_id?: string;
-  due_date?: string;
   snap_token_created_at?: string;
+  paid_at?: string;
+  expired_at?: string;
+  failure_reason?: string;
+  notes?: string;
   tenant: Tenant;
+  generated_by_user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  regenerated_from_payment?: {
+    id: number;
+    order_id: string;
+  };
 }
 
 export interface PaymentStats {
@@ -106,6 +118,7 @@ export interface PaymentFilters {
   search?: string;
   status?: string;
   month?: string;
+  generation_type?: string;
   page?: number;
   per_page?: number;
 }
@@ -114,7 +127,10 @@ export interface PaymentFormData {
   tenant_id: number;
   payment_month: string;
   amount: string;
-  due_date?: string;
+  description?: string;
+  notes?: string;
+  prorate_from_date?: string;
+  send_notification: boolean;
 }
 
 export interface PaymentsResponse {

@@ -27,9 +27,8 @@ class DoorController extends Controller
         try {
             $user = Auth::user();
 
-            // Step 1: Verifikasi tenant record dan status
+            // Step 1: Verifikasi tenant record
             $tenant = Tenant::where('user_id', $user->id)
-                ->where('status', Tenant::STATUS_ACTIVE)
                 ->with('room')
                 ->first();
 
@@ -83,6 +82,24 @@ class DoorController extends Controller
 
             // Step 4: Verifikasi hak akses tenant ke device ini
             $this->verifyTenantDeviceAccess($user, $tenant, $device);
+
+            // Step 5: Verifikasi pembayaran yang tertunggak
+            $overduePayments = \App\Models\Payment::where('tenant_id', $tenant->id)
+                ->where('status', 'overdue')
+                ->count();
+
+            if ($overduePayments > 0) {
+                Log::warning('Tenant access denied due to overdue payments', [
+                    'user_id' => $user->id,
+                    'tenant_id' => $tenant->id,
+                    'overdue_payments' => $overduePayments,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Anda memiliki pembayaran yang tertunggak.',
+                ], 403);
+            }
 
             $reason = $request->input('reason', 'Kontrol manual tenant');
 

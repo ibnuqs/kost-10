@@ -117,10 +117,21 @@ class ProcessPaymentStatus extends Command
 
     private function markOverduePayments(bool $isDryRun = false): int
     {
-        $today = now()->toDateString();
+        $today = now();
+        $currentMonth = $today->format('Y-m');
+        $gracePeriodDays = 7; // Grace period 7 hari setelah payment dibuat
 
         $overduePayments = Payment::where('status', 'pending')
-            ->where('due_date', '<', $today)
+            ->where(function ($query) use ($currentMonth, $gracePeriodDays) {
+                // Scenario 1: Payment untuk bulan sebelumnya DAN sudah lewat grace period
+                $query->where('payment_month', '<', $currentMonth)
+                    ->where('created_at', '<', now()->subDays($gracePeriodDays));
+            })
+            ->orWhere(function ($query) use ($currentMonth, $gracePeriodDays) {
+                // Scenario 2: Payment bulan ini tapi sudah lebih dari grace period
+                $query->where('payment_month', '=', $currentMonth)
+                    ->where('created_at', '<', now()->subDays($gracePeriodDays));
+            })
             ->get();
 
         $count = 0;
@@ -130,7 +141,7 @@ class ProcessPaymentStatus extends Command
                     $payment->update(['status' => 'overdue']);
                 }
 
-                $this->line("📅 Payment {$payment->id} marked as overdue (due: {$payment->due_date})");
+                $this->line("📅 Payment {$payment->id} marked as overdue (month: {$payment->payment_month})");
                 $count++;
 
             } catch (\Exception $e) {
@@ -146,13 +157,15 @@ class ProcessPaymentStatus extends Command
         $cutoffDate = now()->subDays($graceDays)->toDateString();
 
         // Find tenants with overdue payments beyond grace period
+        $cutoffMonth = now()->subDays($graceDays)->format('Y-m');
+        
         $tenantsToSuspend = Tenant::where('status', 'active')
-            ->whereHas('payments', function ($query) use ($cutoffDate) {
+            ->whereHas('payments', function ($query) use ($cutoffMonth) {
                 $query->where('status', 'overdue')
-                    ->where('due_date', '<=', $cutoffDate);
+                    ->where('payment_month', '<=', $cutoffMonth);
             })
             ->with(['user', 'room', 'payments' => function ($query) {
-                $query->where('status', 'overdue')->orderBy('due_date');
+                $query->where('status', 'overdue')->orderBy('payment_month');
             }])
             ->get();
 
@@ -163,7 +176,7 @@ class ProcessPaymentStatus extends Command
                 $overduePayments = $tenant->payments->where('status', 'overdue');
                 $oldestOverdue = $overduePayments->first();
 
-                if ($oldestOverdue && $oldestOverdue->due_date <= $cutoffDate) {
+                if ($oldestOverdue && $oldestOverdue->payment_month <= $cutoffMonth) {
                     if (! $isDryRun) {
                         $tenant->update([
                             'status' => 'suspended',
@@ -176,12 +189,12 @@ class ProcessPaymentStatus extends Command
                             'tenant_id' => $tenant->id,
                             'user_name' => $tenant->user->name,
                             'room' => $tenant->room->room_number,
-                            'overdue_since' => $oldestOverdue->due_date,
+                            'overdue_since' => $oldestOverdue->payment_month,
                             'overdue_amount' => $overduePayments->sum('amount'),
                         ]);
                     }
 
-                    $this->warn("⚠️  Suspended tenant: {$tenant->user->name} (Room {$tenant->room->room_number}) - Overdue since {$oldestOverdue->due_date}");
+                    $this->warn("⚠️  Suspended tenant: {$tenant->user->name} (Room {$tenant->room->room_number}) - Overdue since {$oldestOverdue->payment_month}");
                     $count++;
                 }
 

@@ -4,39 +4,39 @@ import { Card, CardHeader, CardContent } from '../../ui/Card';
 import { StatusBadge } from '../../ui/Status/StatusBadge';
 import mqtt from 'mqtt';
 
-interface RfidScanEvent {
-  uid: string;
+interface BaseLogEvent {
   device_id: string;
-  signal_strength?: number;
   timestamp: number;
+  access_granted: boolean; // Common for both
+  message: string; // Common for both
+  type: 'rfid_scan' | 'manual_command';
+}
+
+interface RfidScanEvent extends BaseLogEvent {
+  uid: string;
+  signal_strength?: number;
   response?: {
     status: string;
     user: string;
     message: string;
     access_granted: boolean;
   };
+  type: 'rfid_scan';
 }
 
-interface DeviceStatus {
-  device_id: string;
-  wifi_connected: boolean;
-  mqtt_connected: boolean;
-  rfid_ready: boolean;
-  device_ip?: string;
-  uptime?: string;  // ESP32 sends "1h 30m" format  
-  firmware_version?: string;
-  last_seen: Date;
+interface ManualCommandLog extends BaseLogEvent {
+  uid: 'MANUAL_ADMIN'; // Specific UID for manual commands
+  user_name: string;
+  user_email: string;
+  room_number: string;
+  // No signal_strength or response for manual commands
+  type: 'manual_command';
 }
 
-interface MqttConnectionStatus {
-  connected: boolean;
-  connecting: boolean;
-  error: string | null;
-  reconnectAttempts: number;
-}
+type RecentLog = RfidScanEvent | ManualCommandLog;
 
 export const RfidRealTimeMonitor: React.FC = () => {
-  const [recentScans, setRecentScans] = useState<RfidScanEvent[]>([]);
+  const [recentScans, setRecentScans] = useState<RecentLog[]>([]);
   const [deviceStatuses, setDeviceStatuses] = useState<Map<string, DeviceStatus>>(new Map());
   const [mqttStatus, setMqttStatus] = useState<MqttConnectionStatus>({
     connected: false,
@@ -53,10 +53,13 @@ export const RfidRealTimeMonitor: React.FC = () => {
   // Handler functions
   const handleRfidScan = (data: Record<string, unknown>) => {
     const scanEvent: RfidScanEvent = {
-      uid: data.uid,
-      device_id: data.device_id || 'ESP32-RFID-01',
-      signal_strength: data.signal_strength,
-      timestamp: data.timestamp || Date.now(),
+      uid: data.uid as string,
+      device_id: data.device_id as string || 'ESP32-RFID-01',
+      signal_strength: data.signal_strength as number,
+      timestamp: data.timestamp as number || Date.now(),
+      type: 'rfid_scan',
+      access_granted: data.access_granted as boolean,
+      message: data.message as string,
     };
 
     setRecentScans(prev => [scanEvent, ...prev.slice(0, 9)]); // Keep last 10 scans
@@ -84,7 +87,7 @@ export const RfidRealTimeMonitor: React.FC = () => {
     // Update the recent scan with response data
     setRecentScans(prev => 
       prev.map(scan => 
-        scan.uid === data.uid 
+        scan.uid === data.uid && scan.type === 'rfid_scan'
           ? { ...scan, response: data }
           : scan
       )
@@ -94,6 +97,22 @@ export const RfidRealTimeMonitor: React.FC = () => {
   const handleSystemStatus = (data: Record<string, unknown>) => {
     console.log('🏠 System status update:', data);
     // Handle system-wide status updates
+  };
+
+  const handleManualCommandLog = (data: Record<string, unknown>) => {
+    const logEvent: ManualCommandLog = {
+        uid: 'MANUAL_ADMIN',
+        device_id: data.device_id as string,
+        timestamp: data.timestamp as number || Date.now(),
+        access_granted: data.access_granted as boolean,
+        message: data.message as string,
+        type: 'manual_command',
+        user_name: data.user_name as string,
+        user_email: data.user_email as string,
+        room_number: data.room_number as string,
+    };
+    setRecentScans(prev => [logEvent, ...prev.slice(0, 9)]);
+    console.log('⚙️ Manual command log detected:', logEvent);
   };
 
   // Define all callback functions before useEffect
@@ -110,6 +129,8 @@ export const RfidRealTimeMonitor: React.FC = () => {
         handleRfidResponse(data);
       } else if (topic === 'kost_system/status') {
         handleSystemStatus(data);
+      } else if (topic === 'rfid/manual_control') {
+        handleManualCommandLog(data);
       }
     } catch (e) {
       console.error('Failed to parse MQTT message:', e);
@@ -242,7 +263,8 @@ export const RfidRealTimeMonitor: React.FC = () => {
           'rfid/tags',      // RFID scan events from ESP32
           'rfid/status',    // ESP32 device status updates
           'rfid/command',   // Responses to ESP32
-          'kost_system/status' // System status
+          'kost_system/status', // System status
+          'rfid/manual_control' // NEW: Manual command logs
         ];
 
         topics.forEach(topic => {
@@ -476,49 +498,79 @@ export const RfidRealTimeMonitor: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentScans.map((scan) => (
-                <div key={`${scan.uid}-${scan.timestamp}`} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="text-lg">💳</div>
-                      <div>
-                        <div className="font-medium">UID: {scan.uid}</div>
-                        <div className="text-sm text-gray-500">
-                          {scan.device_id} • {formatTimestamp(scan.timestamp)}
+              {recentScans.map((scan, index) => (
+                <div key={`${scan.device_id}-${scan.timestamp}-${index}`} className="border rounded-lg p-4">
+                  {scan.type === 'manual_command' ? (
+                    // Render manual command log
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="text-lg">⚙️</div> {/* Icon for manual command */}
+                          <div>
+                            <div className="font-medium">
+                              {scan.device_id} - {scan.room_number}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {scan.user_name} ({scan.user_email}) • {formatTimestamp(scan.timestamp)}
+                            </div>
+                          </div>
                         </div>
+                        <StatusBadge
+                          status={scan.access_granted ? 'Berhasil' : 'Ditolak'}
+                          variant={scan.access_granted ? 'success' : 'error'}
+                        />
+                      </div>
+                      <div className="mt-3 bg-gray-50 rounded-lg p-3">
+                        <span className="text-gray-500">Pesan:</span>
+                        <div className="font-medium">{scan.message}</div>
                       </div>
                     </div>
-                    
-                    {scan.response && (
-                      <StatusBadge 
-                        status={scan.response.access_granted ? 'Granted' : 'Denied'}
-                        variant={scan.response.access_granted ? 'success' : 'error'}
-                      />
-                    )}
-                  </div>
-                  
-                  {scan.response && (
-                    <div className="mt-3 bg-gray-50 rounded-lg p-3">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">User:</span>
-                          <div className="font-medium">{scan.response.user}</div>
+                  ) : (
+                    // Existing RFID scan rendering
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="text-lg">💳</div>
+                          <div>
+                            <div className="font-medium">UID: {scan.uid}</div>
+                            <div className="text-sm text-gray-500">
+                              {scan.device_id} • {formatTimestamp(scan.timestamp)}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-gray-500">Status:</span>
-                          <div className="font-medium">{scan.response.status}</div>
+                        
+                        {scan.response && (
+                          <StatusBadge 
+                            status={scan.response.access_granted ? 'Granted' : 'Denied'}
+                            variant={scan.response.access_granted ? 'success' : 'error'}
+                          />
+                        )}
+                      </div>
+                      
+                      {scan.response && (
+                        <div className="mt-3 bg-gray-50 rounded-lg p-3">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">User:</span>
+                              <div className="font-medium">{scan.response.user}</div>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Status:</span>
+                              <div className="font-medium">{scan.response.status}</div>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <span className="text-gray-500">Message:</span>
+                            <div className="font-medium">{scan.response.message}</div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-gray-500">Message:</span>
-                        <div className="font-medium">{scan.response.message}</div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {scan.signal_strength && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      Signal Strength: {scan.signal_strength} dBm
+                      )}
+                      
+                      {scan.signal_strength && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          Signal Strength: {scan.signal_strength} dBm
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

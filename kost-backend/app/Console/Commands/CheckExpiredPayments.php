@@ -154,12 +154,18 @@ class CheckExpiredPayments extends Command
                 return false;
             }
 
-            // You can implement your notification logic here
-            // For example, using Laravel's notification system:
-
-            // $tenant->user->notify(new PaymentExpiredNotification($payment));
-
-            // Or send via email, SMS, push notification, etc.
+            // Create in-app notification for the tenant
+            \App\Models\Notification::create([
+                'user_id' => $tenant->user_id,
+                'title' => 'Tagihan Kedaluwarsa',
+                'message' => 'Tagihan Anda sebesar Rp '.number_format($payment->amount, 0, ',', '.').' untuk bulan '.date('F Y', strtotime($payment->payment_month.'-01')).' telah kedaluwarsa.',
+                'type' => 'payment',
+                'data' => json_encode([
+                    'payment_id' => $payment->id,
+                    'order_id' => $payment->order_id,
+                    'amount' => $payment->amount,
+                ]),
+            ]);
 
             Log::info('Payment expiration notification sent', [
                 'payment_id' => $payment->id,

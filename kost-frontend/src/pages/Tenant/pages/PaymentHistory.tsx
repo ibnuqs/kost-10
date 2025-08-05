@@ -2,7 +2,7 @@
 // MODERN REDESIGNED PAYMENT HISTORY PAGE - COMPLETELY OVERHAULED
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   CreditCard, 
   Filter, 
@@ -33,6 +33,7 @@ import { paymentService } from '../services/paymentService';
 
 const PaymentHistory: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({});
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,6 +217,8 @@ const PaymentHistory: React.FC = () => {
       
       setShowSnapModal(false);
       refreshPayments(); // Refresh payment list
+      navigate(`/tenant/payments/success?order_id=${result.order_id}`);
+      navigate(`/tenant/payments/success?order_id=${result.order_id}`);
       
     } catch (error) {
       console.error('Error handling payment success:', error);
@@ -631,7 +634,7 @@ const ModernPaymentCard: React.FC<{
   const isPaid = ['paid', 'success', 'settlement', 'capture'].includes(payment.status);
   const isPending = ['pending', 'authorize'].includes(payment.status);
   const isFailed = ['failed', 'failure', 'cancel', 'deny', 'expire'].includes(payment.status);
-  const isOverdue = payment.due_date && new Date(payment.due_date) < new Date() && !isPaid;
+  const isOverdue = payment.status === 'overdue';
   
   // Determine if payment can be made
   const canPay = ['pending', 'unpaid', 'failed'].includes(payment.status) || isOverdue;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, User, Mail, CreditCard, Calendar, DollarSign, Hash, Clock } from 'lucide-react';
+import { RefreshCw, User, Mail, CreditCard, Calendar, DollarSign, Hash, Clock, Bot, UserCheck, FileText, AlertTriangle, RotateCcw } from 'lucide-react';
 import type { AdminPayment as Payment } from '../../../types';
 import { Modal } from '../../ui';
 
@@ -72,6 +72,18 @@ export const PaymentModal: React.FC<{
     return `Rp ${value.toLocaleString('id-ID')}`;
   };
 
+  const getGenerationTypeIcon = (type: string) => {
+    return type === 'manual' ? <UserCheck className="h-4 w-4" /> : <Bot className="h-4 w-4" />;
+  };
+
+  const getGenerationTypeText = (type: string) => {
+    return type === 'manual' ? 'Manual' : 'Otomatis';
+  };
+
+  const getGenerationTypeColor = (type: string) => {
+    return type === 'manual' ? 'text-blue-600 bg-blue-50 border-blue-200' : 'text-green-600 bg-green-50 border-green-200';
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detail Pembayaran" maxWidth="2xl">
       <div className="p-6">
@@ -115,17 +127,32 @@ export const PaymentModal: React.FC<{
                 </span>
               </div>
 
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  {getGenerationTypeIcon(payment.generation_type || 'auto')}
+                  <span className="text-sm text-gray-600 ml-2">Jenis Generate:</span>
+                </div>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getGenerationTypeColor(payment.generation_type || 'auto')}`}>
+                  {getGenerationTypeText(payment.generation_type || 'auto')}
+                </span>
+              </div>
+
+              {payment.expired_at && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-4 h-4 text-gray-500 mr-2" />
+                    <span className="text-sm text-gray-600">Kadaluarsa:</span>
+                  </div>
+                  <span className={`font-medium ${new Date(payment.expired_at) < new Date() ? 'text-red-600' : 'text-gray-900'}`}>
+                    {formatDate(payment.expired_at)}
+                  </span>
+                </div>
+              )}
+
               {payment.payment_method && (
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm text-gray-600">Metode Bayar:</span>
                   <span className="font-medium capitalize">{payment.payment_method}</span>
-                </div>
-              )}
-
-              {payment.transaction_id && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm text-gray-600">ID Transaksi:</span>
-                  <span className="font-mono text-sm">{payment.transaction_id}</span>
                 </div>
               )}
             </div>
@@ -172,6 +199,48 @@ export const PaymentModal: React.FC<{
           </div>
         </div>
 
+        {/* Generation & Management Info */}
+        {(payment.generated_by_user || payment.description || payment.notes || payment.regenerated_from_payment) && (
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+            <h5 className="flex items-center font-medium text-gray-900 mb-3">
+              <FileText className="w-4 h-4 mr-2" />
+              Informasi Pengelolaan
+            </h5>
+            <div className="space-y-3 text-sm">
+              {payment.generated_by_user && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Dibuat oleh:</span>
+                  <span className="font-medium">{payment.generated_by_user.name} ({payment.generated_by_user.email})</span>
+                </div>
+              )}
+              
+              {payment.regenerated_from_payment && (
+                <div className="flex justify-between">
+                  <div className="flex items-center">
+                    <RotateCcw className="w-3 h-3 text-gray-500 mr-1" />
+                    <span className="text-gray-600">Regenerasi dari:</span>
+                  </div>
+                  <span className="font-mono text-xs">{payment.regenerated_from_payment.order_id}</span>
+                </div>
+              )}
+              
+              {payment.description && (
+                <div className="mt-3 p-3 bg-white rounded border">
+                  <span className="text-gray-600 font-medium block mb-1">Deskripsi:</span>
+                  <p className="text-gray-800">{payment.description}</p>
+                </div>
+              )}
+              
+              {payment.notes && (
+                <div className="mt-3 p-3 bg-white rounded border">
+                  <span className="text-gray-600 font-medium block mb-1">Catatan:</span>
+                  <p className="text-gray-800">{payment.notes}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Payment Timeline */}
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <h5 className="flex items-center font-medium text-gray-900 mb-3">
@@ -183,16 +252,24 @@ export const PaymentModal: React.FC<{
               <span className="text-gray-600">Dibuat:</span>
               <span>{formatDate(payment.created_at)}</span>
             </div>
+            {payment.snap_token_created_at && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Token Dibuat:</span>
+                <span className="text-blue-600 font-medium">{formatDate(payment.snap_token_created_at)}</span>
+              </div>
+            )}
             {payment.paid_at && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Dibayar:</span>
                 <span className="text-green-600 font-medium">{formatDate(payment.paid_at)}</span>
               </div>
             )}
-            {payment.failed_at && (
+            {payment.expired_at && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Gagal:</span>
-                <span className="text-red-600 font-medium">{formatDate(payment.failed_at)}</span>
+                <span className="text-gray-600">Kadaluarsa:</span>
+                <span className={`font-medium ${new Date(payment.expired_at) < new Date() ? 'text-red-600' : 'text-orange-600'}`}>
+                  {formatDate(payment.expired_at)}
+                </span>
               </div>
             )}
             <div className="flex justify-between">

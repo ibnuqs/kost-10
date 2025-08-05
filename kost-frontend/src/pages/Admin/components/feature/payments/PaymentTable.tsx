@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, RefreshCw, AlertCircle, User, Settings, XCircle } from 'lucide-react';
+import { Eye, RefreshCw, AlertCircle, User, Settings, XCircle, Bot, UserCheck } from 'lucide-react';
 import { StatusBadge, IconButton } from '../../ui';
 import type { AdminPayment as Payment } from '../../../types';
 
@@ -121,6 +121,18 @@ export const PaymentTable: React.FC<{
     }
   };
 
+  const getGenerationTypeIcon = (type: string) => {
+    return type === 'manual' ? <UserCheck className="h-3 w-3" /> : <Bot className="h-3 w-3" />;
+  };
+
+  const getGenerationTypeText = (type: string) => {
+    return type === 'manual' ? 'Manual' : 'Otomatis';
+  };
+
+  const getGenerationTypeColor = (type: string) => {
+    return type === 'manual' ? 'text-blue-600 bg-blue-50' : 'text-green-600 bg-green-50';
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -142,6 +154,12 @@ export const PaymentTable: React.FC<{
               Status
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Jenis
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Kadaluarsa
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Dibayar Pada
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -152,7 +170,7 @@ export const PaymentTable: React.FC<{
         <tbody className="bg-white divide-y divide-gray-200">
           {loading ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+              <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                 <div className="flex items-center justify-center">
                   <RefreshCw className="animate-spin w-5 h-5 mr-2" />
                   Memuat data pembayaran...
@@ -161,7 +179,7 @@ export const PaymentTable: React.FC<{
             </tr>
           ) : safePayments.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+              <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                 <div className="text-center">
                   <p className="text-lg font-medium">Tidak ada pembayaran</p>
                   <p className="text-sm text-gray-400 mt-1">
@@ -219,6 +237,17 @@ export const PaymentTable: React.FC<{
                     >
                       {getStatusText(payment.status)}
                     </StatusBadge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getGenerationTypeColor(payment.generation_type || 'auto')}`}>
+                      {getGenerationTypeIcon(payment.generation_type || 'auto')}
+                      <span className="ml-1">{getGenerationTypeText(payment.generation_type || 'auto')}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className={`text-sm ${payment.expired_at && new Date(payment.expired_at) < new Date() ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                      {payment.expired_at ? formatDate(payment.expired_at) : '-'}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

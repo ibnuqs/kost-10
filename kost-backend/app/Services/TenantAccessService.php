@@ -6,6 +6,7 @@ use App\Events\TenantAccessChanged;
 use App\Models\Payment;
 use App\Models\RfidCard;
 use App\Models\Tenant;
+use App\Models\Notification;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -74,7 +75,7 @@ class TenantAccessService
     {
         $overduePayments = $tenant->payments()
             ->whereIn('status', ['pending', 'overdue'])
-            ->orderBy('due_date')
+            ->orderBy('payment_month') // Order by payment_month instead of non-existent due_date
             ->get();
 
         $totalOverdue = $overduePayments->sum('amount');
@@ -82,18 +83,22 @@ class TenantAccessService
 
         // Grace period: 7 days after due date
         $gracePeriodDays = 7;
-        $cutoffDate = now()->subDays($gracePeriodDays);
+        $hasCriticalOverdue = false;
+        $calculatedDueDate = null;
 
-        $hasOverduePayments = $overduePayments->count() > 0;
-        $hasCriticalOverdue = $oldestOverdue &&
-            Carbon::parse($oldestOverdue->due_date)->lt($cutoffDate);
+        if ($oldestOverdue) {
+            // Dynamically calculate due date (e.g., 10th of the payment month)
+            $calculatedDueDate = Carbon::parse($oldestOverdue->payment_month . '-10');
+            $cutoffDate = $calculatedDueDate->addDays($gracePeriodDays);
+            $hasCriticalOverdue = now()->gt($cutoffDate);
+        }
 
         // Determine access status
         $hasAccess = ! $hasCriticalOverdue;
         $shouldSuspend = $hasCriticalOverdue && $tenant->status === 'active';
-        $shouldActivate = ! $hasOverduePayments && $tenant->status === 'suspended';
+        $shouldActivate = ! $overduePayments->count() > 0 && $tenant->status === 'suspended';
 
-        $reason = $this->getAccessReason($hasOverduePayments, $hasCriticalOverdue, $totalOverdue, $oldestOverdue);
+        $reason = $this->getAccessReason($overduePayments->count() > 0, $hasCriticalOverdue, $totalOverdue, $calculatedDueDate);
 
         return [
             'has_access' => $hasAccess,
@@ -101,8 +106,8 @@ class TenantAccessService
             'should_activate' => $shouldActivate,
             'overdue_count' => $overduePayments->count(),
             'overdue_amount' => $totalOverdue,
-            'oldest_overdue_date' => $oldestOverdue ? $oldestOverdue->due_date : null,
-            'days_overdue' => $oldestOverdue ? Carbon::parse($oldestOverdue->due_date)->diffInDays(now()) : 0,
+            'oldest_overdue_date' => $calculatedDueDate ? $calculatedDueDate->toDateString() : null,
+            'days_overdue' => $calculatedDueDate ? $calculatedDueDate->diffInDays(now(), false) : 0,
             'grace_period_expired' => $hasCriticalOverdue,
             'reason' => $reason,
         ];
@@ -144,6 +149,13 @@ class TenantAccessService
             'suspension_reason' => $reason,
         ]);
 
+        Notification::create([
+            'user_id' => $tenant->user_id,
+            'title' => 'Akses Ditangguhkan',
+            'message' => 'Akses Anda ditangguhkan karena pembayaran terlambat. Alasan: ' . $reason,
+            'type' => 'access',
+        ]);
+
         Log::warning('Tenant suspended due to overdue payments', [
             'tenant_id' => $tenant->id,
             'user_name' => $tenant->user->name,
@@ -162,6 +174,13 @@ class TenantAccessService
             'suspended_at' => null,
             'suspension_reason' => null,
             'reactivated_at' => now(),
+        ]);
+
+        Notification::create([
+            'user_id' => $tenant->user_id,
+            'title' => 'Akses Dipulihkan',
+            'message' => 'Akses Anda telah berhasil dipulihkan. Terima kasih telah menyelesaikan pembayaran.',
+            'type' => 'access',
         ]);
 
         Log::info('Tenant reactivated - payments are current', [

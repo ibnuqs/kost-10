@@ -53,9 +53,6 @@ class PaymentController extends Controller
                 ], 200);
             }
 
-            // Check and update expired payments for THIS tenant
-            $this->checkAndUpdateExpiredPayments($tenant->id);
-
             $payments = Payment::where('tenant_id', $tenant->id)
                 ->orderBy('payment_month', 'desc')
                 ->get()
