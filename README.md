@@ -1,4 +1,4 @@
-# Panduan Lengkap: Sistem Manajemen Kost (kost-10)
+# Panduan Lengkap: Sistem Manajemen Kost dengan IoT (kost-10)
 
 Dokumen ini adalah panduan utama untuk instalasi, konfigurasi, deployment, dan pemeliharaan proyek `kost-10`.
 
